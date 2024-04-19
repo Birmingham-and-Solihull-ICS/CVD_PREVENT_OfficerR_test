@@ -84,8 +84,8 @@ for(i in inds){
   sc_calc_ICB<-
     dt_ICB_all %>%
     filter(IndicatorCode == i & AreaType == 'ICB') %>%
-    summarise(sc_min = max(0, round((0.8*min(Value, na.rm = TRUE))-5,-1)),
-              sc_max = min(100, round((1.1*max(Value, na.rm = TRUE))+5,-1))
+    summarise(sc_min = max(0, round((0.8*min(Value, na.rm = TRUE)))),
+              sc_max = min(100, round((1.1*max(Value, na.rm = TRUE))))
     ) %>%
     unlist()
   print(i)
@@ -125,9 +125,9 @@ for(i in inds){
   # scale calc
   sc_calc<-
     dt_PCN %>%
-    filter(IndicatorCode == "CVDP006HYP") %>%
-    summarise(sc_min = max(0, round((0.8*min(Value, na.rm = TRUE))-5,-1)),
-              sc_max = min(100, round((1.1*max(Value, na.rm = TRUE))+5,-1)),
+    filter(IndicatorCode == i) %>%
+    summarise(sc_min = max(0, round((0.8*min(Value, na.rm = TRUE)))),
+              sc_max = min(100, round((1.1*max(Value, na.rm = TRUE)))),
     ) %>%
     unlist()
 
@@ -147,7 +147,7 @@ for(i in inds){
     # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
     #            , aes(yintercept=LowerConfidenceLimit), col="red", linetype="dashed")+
     scale_y_continuous("Percentage"
-                       , limits = sc_calc
+                       #, limits = sc_calc
                        , na.value = 0)+
     scale_x_discrete("PCN")+
     labs(subtitle = lng_title) +
