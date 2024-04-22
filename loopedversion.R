@@ -89,7 +89,7 @@ for(i in inds){
     select(IndicatorName) %>%
     distinct() %>%
     pull() %>%
-    wrapper(width =220)
+    wrapper(width =200)
 
   # ICB
   sc_calc_ICB<-
@@ -157,6 +157,8 @@ for(i in inds){
           , plot.subtitle = element_text(face = "italic", size = 18)
           , axis.text = element_text(size = 18)
           , axis.title = element_text(size = 18)
+          , legend.text = element_text(size = 18)
+          , legend.title = element_text(size = 18)
           #, plot.subtitle = element_text(face = "italic", size = 12)
           #, plot.subtitle = element_text(face = "italic", size = 12)
           , legend.position = "bottom"
@@ -205,6 +207,8 @@ for(i in inds){
           , plot.subtitle = element_text(face = "italic", size = 18)
           , axis.text = element_text(size = 18)
           , axis.title = element_text(size = 18)
+          , legend.text = element_text(size = 18)
+          , legend.title = element_text(size = 18)
           #, plot.subtitle = element_text(face = "italic", size = 12)
           #, plot.subtitle = element_text(face = "italic", size = 12)
     )
@@ -250,6 +254,8 @@ for(i in inds){
           , plot.subtitle = element_text(face = "italic", size = 18)
           , axis.text = element_text(size = 18)
           , axis.title = element_text(size = 18)
+          , legend.text = element_text(size = 18)
+          , legend.title = element_text(size = 18)
           #, plot.subtitle = element_text(face = "italic", size = 12)
           #, plot.subtitle = element_text(face = "italic", size = 12)
     )
