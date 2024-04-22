@@ -16,10 +16,21 @@ con <- dbConnect(odbc::odbc(), .connection_string = "Driver={SQL Server};server=
                  timeout = 10)
 
 dt_PCN <- dbGetQuery(con,
-                     "Select a.*, b.Abbreviated
-                  from EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data] a inner join
-                  EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data_PCNs] b on a.AreaCode = b.AreaCode
-                  WHERE TimePeriodName = 'To June 2023' and MetricCategoryName = 'Persons'"
+                     "Select a.*, b.Abbreviated, c.Locality
+                      from EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data] a inner join
+                      EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data_PCNs] b on a.AreaCode = b.AreaCode
+                      left join (select distinct PCN, [PCN code], Locality from EAT_Reporting_BSOL.Reference.BSOL_ICS_PracticeMapped
+                      WHERE Is_Current_Practice = 1) c ON a.AreaCode = c.[PCN code]
+                      WHERE TimePeriodName = 'To June 2023' and MetricCategoryName = 'Persons'"
+)
+
+dt_PCN_ethn_east <- dbGetQuery(con,
+                     "Select a.*, b.Abbreviated, c.Locality
+                      from EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data] a inner join
+                      EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data_PCNs] b on a.AreaCode = b.AreaCode
+                      left join (select distinct PCN, [PCN code], Locality from EAT_Reporting_BSOL.Reference.BSOL_ICS_PracticeMapped) c ON a.AreaCode = c.[PCN code]
+                      WHERE TimePeriodName = 'To June 2023' and MetricCategoryTypeName = 'Ethnicity'
+                      and c.Locality ='East'"
 )
 
 dt_ICB <- dbGetQuery(con,
@@ -94,9 +105,9 @@ for(i in inds){
     filter(IndicatorCode == i & AreaType == 'ICB') %>%
     arrange(Value) %>%
     mutate(AreaName=factor(AreaName, levels=AreaName),
-           BSOL = ifelse(AreaCode == 'E54000055',1,0)) %>%
+           BSOL = ifelse(AreaCode == 'E54000055',TRUE,FALSE)) %>%
     ggplot(aes(x=AreaName, y= Value))+
-    geom_col(position = position_identity(), aes(fill=factor(BSOL)), show.legend = FALSE)+
+    geom_col(position = position_identity(), aes(fill=BSOL))+
     geom_hline(data=filter(dt_ICB_all, IndicatorCode == i, AreaType == 'CTRY')
                , aes(yintercept=Value), col="red", linewidth = 2)+
     # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
@@ -116,9 +127,45 @@ for(i in inds){
           , axis.title = element_text(size = 18)
           #, plot.subtitle = element_text(face = "italic", size = 12)
           #, plot.subtitle = element_text(face = "italic", size = 12)
+          , legend.position = "bottom"
     )
 
   a <- rvg::dml(ggobj=a)
+
+
+    a<- dt_ICB_all %>%
+    filter(IndicatorCode == i & AreaType == 'ICB') %>%
+    arrange(Value) %>%
+    mutate(AreaName=factor(AreaName, levels=AreaName),
+           BSOL = ifelse(AreaCode == 'E54000055',TRUE,FALSE)) %>%
+    ggplot(aes(x=AreaName, y= Value))+
+    geom_col(position = position_identity(), aes(fill=BSOL))+
+    geom_hline(data=filter(dt_ICB_all, IndicatorCode == i, AreaType == 'CTRY')
+               , aes(yintercept=Value), col="red", linewidth = 2)+
+    # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
+    #            , aes(yintercept=UpperConfidenceLimit), col="red", linetype="dashed")+
+    # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
+    #            , aes(yintercept=LowerConfidenceLimit), col="red", linetype="dashed")+
+    scale_fill_manual(values = c("#4fbff0", "#fc8700"))+
+    scale_y_continuous("Percentage"
+                       , limits = sc_calc_ICB
+                       , na.value = 0)+
+    scale_x_discrete("ICB")+
+    labs(subtitle = lng_title) +
+    theme_minimal() +
+    theme(axis.text.x=element_blank()
+          , plot.subtitle = element_text(face = "italic", size = 18)
+          , axis.text = element_text(size = 18)
+          , axis.title = element_text(size = 18)
+          #, plot.subtitle = element_text(face = "italic", size = 12)
+          #, plot.subtitle = element_text(face = "italic", size = 12)
+          , legend.position = "bottom"
+    )
+
+  a <- rvg::dml(ggobj=a)
+
+
+
 
 
   # PCN
@@ -137,15 +184,17 @@ for(i in inds){
     dt_PCN %>%
     filter(IndicatorCode == i) %>%
     arrange(Value) %>%
-    mutate(AreaName=factor(AreaName, levels=AreaName)) %>%
-    ggplot(aes(x=AreaName, y= Value))+
-    geom_col(position = position_identity(), fill="#8cedab")+
+    mutate(AreaName=factor(AreaName, levels=AreaName),
+           `East Locality` = ifelse(Locality == "East", TRUE,FALSE)) %>%
+    ggplot()+
+    geom_col(aes(x=AreaName, y= Value, fill = `East Locality`), position = position_identity())+
     geom_hline(data=filter(dt_ICB, IndicatorCode == i)
                , aes(yintercept=Value), col="red", linewidth = 2)+
     # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
     #            , aes(yintercept=UpperConfidenceLimit), col="red", linetype="dashed")+
     # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
     #            , aes(yintercept=LowerConfidenceLimit), col="red", linetype="dashed")+
+    scale_fill_manual(values = c("#8cedab", "#fc8700"))+
     scale_y_continuous("Percentage"
                        #, limits = sc_calc
                        , na.value = 0)+
@@ -161,6 +210,51 @@ for(i in inds){
     )
 
   b <- rvg::dml(ggobj=b)
+
+  #     green  light_blue      orange   deep_navy      purple    nhs_blue light_slate    charcoal       white
+  # "#8cedab"   "#4fbff0"   "#fc8700"   "#031d44"   "#b88ce3"   "#005EB8"   "#b2b7b9"   "#2c2825"   "#ffffff"
+  #unique(dt_PCN_ethn_east$AreaName)
+  c<-
+    dt_PCN_ethn_east  %>%
+    filter(IndicatorCode == i) %>%
+    mutate(PCN_mask = case_when(
+      AreaName == "Birmingham East Central PCN" ~ "A"
+      , AreaName == "Bordesley East PCN" ~ "B"
+      , AreaName == "Shard End And Kitts Green PCN" ~ "C"
+      , AreaName == "Washwood Heath PCN" ~ "D"
+      , AreaName == "Small Heath PCN" ~ "E"
+      , AreaName == "Nechells, Saltley & Alum Rock PCN" ~ "F"
+
+    )) %>%
+    # arrange(Value) %>%
+    # mutate(AreaName=factor(AreaName, levels=AreaName),
+    #        `East Locality` = ifelse(Locality == "East", TRUE,FALSE)) %>%
+    ggplot()+
+    geom_col(aes(x=PCN_mask, y= Value,  fill = MetricCategoryName), position = position_dodge())+
+    geom_hline(data=select(filter(dt_ICB, IndicatorCode == i), Value) # surgery on data frame to cut to indicator and remove AreaName for facet.
+                , aes(yintercept=Value), col="red", linewidth = 2)+
+    # # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
+    #            , aes(yintercept=UpperConfidenceLimit), col="red", linetype="dashed")+
+    # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
+    #            , aes(yintercept=LowerConfidenceLimit), col="red", linetype="dashed")+
+    scale_fill_manual("Ethnicity", values = c("#8cedab","#4fbff0","#fc8700", "#031d44", "#b88ce3", "#005EB8", "#b2b7b9"))+
+
+    scale_y_continuous("Percentage"
+                       #, limits = sc_calc
+                       , na.value = 0)+
+    scale_x_discrete("PCN")+
+    labs(subtitle = lng_title) +
+    #theme_minimal() +
+    facet_grid(cols = vars(PCN_mask), scales = "free_x")+
+    theme(axis.text.x=element_blank()
+          , plot.subtitle = element_text(face = "italic", size = 18)
+          , axis.text = element_text(size = 18)
+          , axis.title = element_text(size = 18)
+          #, plot.subtitle = element_text(face = "italic", size = 12)
+          #, plot.subtitle = element_text(face = "italic", size = 12)
+    )
+
+   c <- rvg::dml(ggobj=c)
 
 
 
@@ -219,6 +313,29 @@ for(i in inds){
   # Add commentary
   my_pres2 <- ph_with(my_pres2, value = txt_val_PCN
                       , location = ph_location_label("Commentary"))
+
+  # PCN - Ethnicity
+  # Add a slide
+  my_pres2 <-add_slide(my_pres2, layout = "1_Normal Slide Picture", master="21_BasicWhite")
+
+  # Add title
+  my_pres2 <- ph_with(my_pres2, value = paste("East Locality PCNs: Ethnicity -", sh_title), location =  ph_location_label("Slide Title"))
+
+  # Add plot
+  my_pres2 <- ph_with(my_pres2, value = c, location = ph_location_type("pic"))
+
+  # # Text
+  # min_PCN <- filter(dt_ICB, IndicatorCode==i) %>% summarise(min(Value)) %>%  pull()
+  # max_PCN <- filter(dt_ICB, IndicatorCode==i) %>% summarise(min(Value))  %>%  pull()
+  # #BSOL_val <- filter(dt_ICB, IndicatorCode==i) %>% select(Value) %>%  pull()
+  #
+  # txt_val_PCN <- paste0("PCNs in BSOL range from ",
+  #                       min_PCN,
+  #                       " to ",
+  #                       max_PCN,
+  #                       ", with a BSOL value of ",
+  #                       BSOL_val,
+  #                       ".")
 }
 
 
