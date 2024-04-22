@@ -41,12 +41,22 @@ dt_ICB <- dbGetQuery(con,
                   and a.AreaCode = 'E54000055'"
 )
 
+
+
 dt_ICB_all <- dbGetQuery(con,
                      "Select a.*, b.Abbreviated
                   from EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data] a left join
                   EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data_ICBs] b on a.AreaCode = b.AreaCode
                   WHERE TimePeriodName = 'To June 2023' and MetricCategoryName = 'Persons'"
 
+)
+
+dt_ICB_bsol_dep <- dbGetQuery(con,
+                              "Select a.*, b.Abbreviated
+                              from EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data] a inner join
+                              EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data_ICBs] b on a.AreaCode = b.AreaCode
+                              WHERE TimePeriodName = 'To June 2023' and MetricCategoryTypeName = 'Deprivation quintile'
+                              and a.AreaCode = 'E54000055'"
 )
 
 # Check
@@ -64,6 +74,25 @@ wrapper <- function(x, ...)
 # Rounding function
 roundUp <- function(x) 10^ceiling(log10(x))
 roundDown <- function(x) 10^floor(log10(-x))
+
+
+# Set ggplot theme general
+theme_set(
+      theme_minimal()+
+        theme(
+          text = element_text(size = 16)
+      , axis.text.x=element_blank()
+      , plot.subtitle = element_text(face = "italic", size = 20)
+      , axis.text = element_text(size = 18)
+      , axis.title = element_text(size = 18)
+      , legend.text = element_text(size = 20)
+      , legend.title = element_text(size = 22)
+        )
+)
+
+#  geom_text ratio - bit weird: https://stackoverflow.com/questions/25061822/ggplot-geom-text-font-size-control
+gg_ratio <- 8/5 # 14/5 was too big
+# for some reason it started passing the size properly, so parked this.
 
 # Create presentation
 
@@ -89,7 +118,7 @@ for(i in inds){
     select(IndicatorName) %>%
     distinct() %>%
     pull() %>%
-    wrapper(width =200)
+    wrapper(width =175)
 
   # ICB
   sc_calc_ICB<-
@@ -101,6 +130,13 @@ for(i in inds){
     unlist()
   print(i)
 
+  # England value - - used in plots and logic for text
+  ENG_val <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% select(Value) %>%  pull()
+  # Bsol value - used in plots and logic for text
+  BSOL_val <- filter(dt_ICB, IndicatorCode==i) %>% select(Value) %>%  pull()
+
+
+  # ICBs nationally
   a<- dt_ICB_all %>%
     filter(IndicatorCode == i & AreaType == 'ICB') %>%
     arrange(Value) %>%
@@ -108,65 +144,44 @@ for(i in inds){
            BSOL = ifelse(AreaCode == 'E54000055',TRUE,FALSE)) %>%
     ggplot(aes(x=AreaName, y= Value))+
     geom_col(position = position_identity(), aes(fill=BSOL))+
-    geom_hline(data=filter(dt_ICB_all, IndicatorCode == i, AreaType == 'CTRY')
-               , aes(yintercept=Value), col="red", linewidth = 2)+
-    # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
-    #            , aes(yintercept=UpperConfidenceLimit), col="red", linetype="dashed")+
-    # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
-    #            , aes(yintercept=LowerConfidenceLimit), col="red", linetype="dashed")+
+    geom_hline(yintercept=ENG_val, col="blue", linewidth = 2)+
+    annotate("text", 0,ENG_val,label = "England", vjust = 1.5, hjust=0, col="blue", size= 8)+
+
     scale_fill_manual(values = c("#4fbff0", "#fc8700"))+
     scale_y_continuous("Percentage"
                        , limits = sc_calc_ICB
                        , na.value = 0)+
     scale_x_discrete("ICB")+
     labs(subtitle = lng_title) +
-    theme_minimal() +
-    theme(axis.text.x=element_blank()
-          , plot.subtitle = element_text(face = "italic", size = 18)
-          , axis.text = element_text(size = 18)
-          , axis.title = element_text(size = 18)
-          #, plot.subtitle = element_text(face = "italic", size = 12)
-          #, plot.subtitle = element_text(face = "italic", size = 12)
-          , legend.position = "bottom"
-    )
+    theme(legend.position = "bottom")
 
   a <- rvg::dml(ggobj=a)
 
 
-    a<- dt_ICB_all %>%
-    filter(IndicatorCode == i & AreaType == 'ICB') %>%
-    arrange(Value) %>%
-    mutate(AreaName=factor(AreaName, levels=AreaName),
-           BSOL = ifelse(AreaCode == 'E54000055',TRUE,FALSE)) %>%
-    ggplot(aes(x=AreaName, y= Value))+
-    geom_col(position = position_identity(), aes(fill=BSOL))+
-    geom_hline(data=filter(dt_ICB_all, IndicatorCode == i, AreaType == 'CTRY')
-               , aes(yintercept=Value), col="red", linewidth = 2)+
-    # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
-    #            , aes(yintercept=UpperConfidenceLimit), col="red", linetype="dashed")+
-    # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
-    #            , aes(yintercept=LowerConfidenceLimit), col="red", linetype="dashed")+
-    scale_fill_manual(values = c("#4fbff0", "#fc8700"))+
+  # Deprivation at ICB level - data not provided lower
+
+  b<-
+    dt_ICB_bsol_dep  %>%
+    filter(IndicatorCode == i) %>%
+    ggplot()+
+    geom_col(aes(x=MetricCategoryName, y= Value,  fill = MetricCategoryName), position = position_dodge(), show.legend = FALSE)+
+
+    geom_hline(yintercept=BSOL_val, col="red", linewidth = 2)+
+    annotate("text", 0,BSOL_val,label = "BSOL", vjust = -0.5, hjust=0, col="red", size= 8)+
+
+    geom_hline(yintercept=ENG_val, col="blue", linewidth = 2)+
+    annotate("text", 0,ENG_val,label = "England", vjust = 1.5, hjust=0, col="blue", size= 8)+
+
+    scale_fill_manual("Deprivation", values = c("#8cedab","#4fbff0","#fc8700", "#031d44", "#b88ce3", "#005EB8", "#b2b7b9"))+
     scale_y_continuous("Percentage"
-                       , limits = sc_calc_ICB
+                       #, limits = sc_calc
                        , na.value = 0)+
-    scale_x_discrete("ICB")+
+    scale_x_discrete("Deprivation Quintile")+
     labs(subtitle = lng_title) +
-    theme_minimal() +
-    theme(axis.text.x=element_blank()
-          , plot.subtitle = element_text(face = "italic", size = 18)
-          , axis.text = element_text(size = 18)
-          , axis.title = element_text(size = 18)
-          , legend.text = element_text(size = 18)
-          , legend.title = element_text(size = 18)
-          #, plot.subtitle = element_text(face = "italic", size = 12)
-          #, plot.subtitle = element_text(face = "italic", size = 12)
-          , legend.position = "bottom"
-    )
+    #facet_grid(cols = vars(MetricCategoryTypeName), scales = "free_x")+
+    theme(axis.text.x = element_text(size = 18))
 
-  a <- rvg::dml(ggobj=a)
-
-
+  b <- rvg::dml(ggobj=b)
 
 
 
@@ -182,7 +197,7 @@ for(i in inds){
 
   print(i)
 
-  b<-
+  c<-
     dt_PCN %>%
     filter(IndicatorCode == i) %>%
     arrange(Value) %>%
@@ -190,35 +205,23 @@ for(i in inds){
            `East Locality` = ifelse(Locality == "East", TRUE,FALSE)) %>%
     ggplot()+
     geom_col(aes(x=AreaName, y= Value, fill = `East Locality`), position = position_identity())+
-    geom_hline(data=filter(dt_ICB, IndicatorCode == i)
-               , aes(yintercept=Value), col="red", linewidth = 2)+
-    # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
-    #            , aes(yintercept=UpperConfidenceLimit), col="red", linetype="dashed")+
-    # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
-    #            , aes(yintercept=LowerConfidenceLimit), col="red", linetype="dashed")+
+
+    geom_hline(yintercept=BSOL_val, col="red", linewidth = 2)+
+    annotate("text", 0,BSOL_val,label = "BSOL", vjust = -0.5, hjust=0, col="red", size= 8)+
+
     scale_fill_manual(values = c("#8cedab", "#fc8700"))+
     scale_y_continuous("Percentage"
                        #, limits = sc_calc
                        , na.value = 0)+
     scale_x_discrete("PCN")+
-    labs(subtitle = lng_title) +
-    theme_minimal() +
-    theme(axis.text.x=element_blank()
-          , plot.subtitle = element_text(face = "italic", size = 18)
-          , axis.text = element_text(size = 18)
-          , axis.title = element_text(size = 18)
-          , legend.text = element_text(size = 18)
-          , legend.title = element_text(size = 18)
-          #, plot.subtitle = element_text(face = "italic", size = 12)
-          #, plot.subtitle = element_text(face = "italic", size = 12)
-    )
+    labs(subtitle = lng_title)
 
-  b <- rvg::dml(ggobj=b)
+  c <- rvg::dml(ggobj=c)
 
   #     green  light_blue      orange   deep_navy      purple    nhs_blue light_slate    charcoal       white
   # "#8cedab"   "#4fbff0"   "#fc8700"   "#031d44"   "#b88ce3"   "#005EB8"   "#b2b7b9"   "#2c2825"   "#ffffff"
   #unique(dt_PCN_ethn_east$AreaName)
-  c<-
+  d<-
     dt_PCN_ethn_east  %>%
     filter(IndicatorCode == i) %>%
     mutate(PCN_mask = case_when(
@@ -230,17 +233,10 @@ for(i in inds){
       , AreaName == "Nechells, Saltley & Alum Rock PCN" ~ "F"
 
     )) %>%
-    # arrange(Value) %>%
-    # mutate(AreaName=factor(AreaName, levels=AreaName),
-    #        `East Locality` = ifelse(Locality == "East", TRUE,FALSE)) %>%
     ggplot()+
     geom_col(aes(x=PCN_mask, y= Value,  fill = MetricCategoryName), position = position_dodge())+
-    geom_hline(data=select(filter(dt_ICB, IndicatorCode == i), Value) # surgery on data frame to cut to indicator and remove AreaName for facet.
-                , aes(yintercept=Value), col="red", linewidth = 2)+
-    # # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
-    #            , aes(yintercept=UpperConfidenceLimit), col="red", linetype="dashed")+
-    # geom_hline(data=filter(dt_ICB, IndicatorCode == "CVDP002AF")
-    #            , aes(yintercept=LowerConfidenceLimit), col="red", linetype="dashed")+
+    geom_hline(yintercept=BSOL_val, col="red", linewidth = 2)+
+    annotate("text", 0,BSOL_val,label = "BSOL", vjust = -0.5, hjust=0, col = "red", size= 8)+
     scale_fill_manual("Ethnicity", values = c("#8cedab","#4fbff0","#fc8700", "#031d44", "#b88ce3", "#005EB8", "#b2b7b9"))+
 
     scale_y_continuous("Percentage"
@@ -248,22 +244,17 @@ for(i in inds){
                        , na.value = 0)+
     scale_x_discrete("PCN")+
     labs(subtitle = lng_title) +
-    #theme_minimal() +
-    facet_grid(cols = vars(PCN_mask), scales = "free_x")+
-    theme(axis.text.x=element_blank()
-          , plot.subtitle = element_text(face = "italic", size = 18)
-          , axis.text = element_text(size = 18)
-          , axis.title = element_text(size = 18)
-          , legend.text = element_text(size = 18)
-          , legend.title = element_text(size = 18)
-          #, plot.subtitle = element_text(face = "italic", size = 12)
-          #, plot.subtitle = element_text(face = "italic", size = 12)
-    )
+    facet_grid(cols = vars(PCN_mask), scales = "free_x")
 
-   c <- rvg::dml(ggobj=c)
+   d <- rvg::dml(ggobj=d)
 
 
 
+
+  # Transition
+   my_pres2 <-add_slide(my_pres2, layout = "Transition", master="21_BasicWhite")
+   # Add title
+   my_pres2 <- ph_with(my_pres2, value = paste(sh_title), location =  ph_location_label("Title 1"))
 
   # Add a slide
   my_pres2 <-add_slide(my_pres2, layout = "1_Normal Slide Picture", master="21_BasicWhite")
@@ -277,8 +268,10 @@ for(i in inds){
   # Text
   min_ICB <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% summarise(min(Value)) %>%  pull()
   max_ICB <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% summarise(min(Value))  %>%  pull()
-  ENG_val <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% select(Value) %>%  pull()
-  BSOL_val <- filter(dt_ICB, IndicatorCode==i) %>% select(Value) %>%  pull()
+  # Moved to earlier for plotting
+  #ENG_val <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% select(Value) %>%  pull()
+  #Moved to earlier for plotting
+  #BSOL_val <- filter(dt_ICB, IndicatorCode==i) %>% select(Value) %>%  pull()
   ICB_status <- ifelse(BSOL_val > ENG_val, "higher than", ifelse(BSOL_val < ENG_val, "lower than", "the same as"))
 
   txt_val_ICB <- paste0("ICBs range from ",
@@ -294,6 +287,16 @@ for(i in inds){
   my_pres2 <- ph_with(my_pres2, value = txt_val_ICB
                      , location = ph_location_label("Commentary"))
 
+  # BSOL deprivation
+  # Add a slide
+  my_pres2 <-add_slide(my_pres2, layout = "1_Normal Slide Picture", master="21_BasicWhite")
+
+  # Add title
+  my_pres2 <- ph_with(my_pres2, value = paste("ICB - Deprivation -", sh_title), location =  ph_location_label("Slide Title"))
+
+  # Add plot
+  my_pres2 <- ph_with(my_pres2, value = b, location = ph_location_type("pic"))
+
  # PCN
   # Add a slide
   my_pres2 <-add_slide(my_pres2, layout = "1_Normal Slide Picture", master="21_BasicWhite")
@@ -302,7 +305,7 @@ for(i in inds){
   my_pres2 <- ph_with(my_pres2, value = paste("PCNs vs. BSOL -", sh_title), location =  ph_location_label("Slide Title"))
 
   # Add plot
-  my_pres2 <- ph_with(my_pres2, value = b, location = ph_location_type("pic"))
+  my_pres2 <- ph_with(my_pres2, value = c, location = ph_location_type("pic"))
 
   # Text
   min_PCN <- filter(dt_ICB, IndicatorCode==i) %>% summarise(min(Value)) %>%  pull()
@@ -328,20 +331,9 @@ for(i in inds){
   my_pres2 <- ph_with(my_pres2, value = paste("East Locality PCNs: Ethnicity -", sh_title), location =  ph_location_label("Slide Title"))
 
   # Add plot
-  my_pres2 <- ph_with(my_pres2, value = c, location = ph_location_type("pic"))
+  my_pres2 <- ph_with(my_pres2, value = d, location = ph_location_type("pic"))
 
-  # # Text
-  # min_PCN <- filter(dt_ICB, IndicatorCode==i) %>% summarise(min(Value)) %>%  pull()
-  # max_PCN <- filter(dt_ICB, IndicatorCode==i) %>% summarise(min(Value))  %>%  pull()
-  # #BSOL_val <- filter(dt_ICB, IndicatorCode==i) %>% select(Value) %>%  pull()
-  #
-  # txt_val_PCN <- paste0("PCNs in BSOL range from ",
-  #                       min_PCN,
-  #                       " to ",
-  #                       max_PCN,
-  #                       ", with a BSOL value of ",
-  #                       BSOL_val,
-  #                       ".")
+
 }
 
 

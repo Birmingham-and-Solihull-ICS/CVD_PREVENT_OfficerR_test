@@ -111,7 +111,7 @@ my_pres <- read_pptx("docs/BSOL_CVD_PREVENT 2.pptx")
 #rm(my_pres)
 
 # What are the layouts and masters available
-layout_summary(ppt_tmp)
+layout_summary(my_pres )
 
 # title location
 #rm(loc_title)
