@@ -332,8 +332,8 @@ for(i in inds){
   my_pres2 <- ph_with(my_pres2, value = a, location = ph_location_type("pic"))
 
   # Text
-  min_ICB <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% summarise(min(Value)) %>%  pull()
-  max_ICB <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% summarise(max(Value))  %>%  pull()
+  min_ICB <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'ICB') %>% summarise(min(Value)) %>%  pull()
+  max_ICB <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'ICB') %>% summarise(max(Value))  %>%  pull()
   # Moved to earlier for plotting
   #ENG_val <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% select(Value) %>%  pull()
   #Moved to earlier for plotting
@@ -375,8 +375,8 @@ for(i in inds){
   my_pres2 <- ph_with(my_pres2, value = c, location = ph_location_type("pic"))
 
   # Text
-  min_PCN <- filter(dt_ICB, IndicatorCode==i) %>% summarise(min(Value)) %>%  pull()
-  max_PCN <- filter(dt_ICB, IndicatorCode==i) %>% summarise(max(Value))  %>%  pull()
+  min_PCN <- filter(dt_PCN, IndicatorCode==i) %>% summarise(min(Value)) %>%  pull()
+  max_PCN <- filter(dt_PCN, IndicatorCode==i) %>% summarise(max(Value))  %>%  pull()
   #BSOL_val <- filter(dt_ICB, IndicatorCode==i) %>% select(Value) %>%  pull()
 
   txt_val_PCN <- paste0("PCNs in BSOL range from ",
