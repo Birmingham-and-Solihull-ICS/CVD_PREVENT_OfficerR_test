@@ -24,13 +24,13 @@ dt_PCN <- dbGetQuery(con,
                       WHERE TimePeriodName = 'To September 2023' and MetricCategoryName = 'Persons'"
 )
 
-dt_PCN_ethn_east <- dbGetQuery(con,
+dt_PCN_ethn_west <- dbGetQuery(con,
                      "Select a.*, b.Abbreviated, c.Locality
                       from EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data] a inner join
                       EAT_Reporting_BSOL.[Development].[BSOL_1255_CVDP_Data_PCNs] b on a.AreaCode = b.AreaCode
                       left join (select distinct PCN, [PCN code], Locality from EAT_Reporting_BSOL.Reference.BSOL_ICS_PracticeMapped) c ON a.AreaCode = c.[PCN code]
                       WHERE TimePeriodName = 'To September 2023' and MetricCategoryTypeName = 'Ethnicity'
-                      and c.Locality ='East'"
+                      and c.Locality ='West'"
 )
 
 dt_ICB <- dbGetQuery(con,
@@ -239,9 +239,9 @@ for(i in inds){
     filter(IndicatorCode == i) %>%
     arrange(Value) %>%
     mutate(AreaName=factor(AreaName, levels=AreaName),
-           `East Locality` = ifelse(Locality == "East", TRUE,FALSE)) %>%
+           `West Locality` = ifelse(Locality == "West", TRUE,FALSE)) %>%
     ggplot()+
-    geom_col(aes(x=AreaName, y= Value, fill = `East Locality`), position = position_identity())+
+    geom_col(aes(x=AreaName, y= Value, fill = `West Locality`), position = position_identity())+
 
     geom_hline(yintercept=BSOL_val, col="red", linewidth = 2)+
     annotate("text", 0,BSOL_val,label = "BSOL", vjust = -0.5, hjust=0, col="red", size= 8)+
@@ -257,11 +257,11 @@ for(i in inds){
 
   #     green  light_blue      orange   deep_navy      purple    nhs_blue light_slate    charcoal       white
   # "#8cedab"   "#4fbff0"   "#fc8700"   "#031d44"   "#b88ce3"   "#005EB8"   "#b2b7b9"   "#2c2825"   "#ffffff"
-  #unique(dt_PCN_ethn_east$AreaName)
+  #unique(dt_PCN_ethn_west$AreaName)
 
   # Added error handling if Ethnicity data is missing at PCN level.
   if(
-    dt_PCN_ethn_east  %>%
+    dt_PCN_ethn_west  %>%
     filter(IndicatorCode == i) %>%
     nrow() == 0
   ){
@@ -271,7 +271,7 @@ for(i in inds){
     # PCN
     # scale calc
     sc_calc<-
-      dt_PCN_ethn_east %>%
+      dt_PCN_ethn_west %>%
       filter(IndicatorCode == i) %>%
       summarise(sc_min = max(0, round((0.8*min(Value, na.rm = TRUE)))),
                 sc_max = min(100, round((1.1*max(Value, na.rm = TRUE)))),
@@ -283,15 +283,15 @@ for(i in inds){
 
 
   d<-
-    dt_PCN_ethn_east  %>%
+    dt_PCN_ethn_west  %>%
     filter(IndicatorCode == i) %>%
     mutate(PCN_mask = case_when(
-      AreaName == "Birmingham East Central PCN" ~ "A"
-      , AreaName == "Bordesley East PCN" ~ "B"
-      , AreaName == "Shard End And Kitts Green PCN" ~ "C"
-      , AreaName == "Washwood Heath PCN" ~ "D"
-      , AreaName == "Small Heath PCN" ~ "E"
-      , AreaName == "Nechells, Saltley & Alum Rock PCN" ~ "F"
+      AreaName == "West Birmingham PCN" ~ "A"
+      , AreaName == "People's Health Partnership PCN" ~ "B"
+      , AreaName == "Swb I3 PCN" ~ "C"
+      , AreaName == "Swb Modality PCN" ~ "D"
+      , AreaName == "Swb Urban Health PCN" ~ "E"
+      , AreaName == "PIONEERS INTEGRATED PARTNERSHIP PCN" ~ "F"
 
     )) %>%
     ggplot()+
@@ -333,7 +333,7 @@ for(i in inds){
 
   # Text
   min_ICB <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% summarise(min(Value)) %>%  pull()
-  max_ICB <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% summarise(min(Value))  %>%  pull()
+  max_ICB <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% summarise(max(Value))  %>%  pull()
   # Moved to earlier for plotting
   #ENG_val <- filter(dt_ICB_all, IndicatorCode==i & AreaType == 'CTRY') %>% select(Value) %>%  pull()
   #Moved to earlier for plotting
@@ -376,7 +376,7 @@ for(i in inds){
 
   # Text
   min_PCN <- filter(dt_ICB, IndicatorCode==i) %>% summarise(min(Value)) %>%  pull()
-  max_PCN <- filter(dt_ICB, IndicatorCode==i) %>% summarise(min(Value))  %>%  pull()
+  max_PCN <- filter(dt_ICB, IndicatorCode==i) %>% summarise(max(Value))  %>%  pull()
   #BSOL_val <- filter(dt_ICB, IndicatorCode==i) %>% select(Value) %>%  pull()
 
   txt_val_PCN <- paste0("PCNs in BSOL range from ",
@@ -395,7 +395,7 @@ for(i in inds){
   my_pres2 <-add_slide(my_pres2, layout = "1_Normal Slide Picture", master="21_BasicWhite")
 
   # Add title
-  my_pres2 <- ph_with(my_pres2, value = paste("East Locality PCNs: Ethnicity -", sh_title), location =  ph_location_label("Slide Title"))
+  my_pres2 <- ph_with(my_pres2, value = paste("West Locality PCNs: Ethnicity -", sh_title), location =  ph_location_label("Slide Title"))
 
   # Added error handling stage where ethnicity is missing at PCN
   if( is.na(d[1])){
@@ -411,4 +411,4 @@ for(i in inds){
 
 
 
-print(my_pres2, target = "output/second_example.pptx")
+print(my_pres2, target = "output/west_example.pptx")
