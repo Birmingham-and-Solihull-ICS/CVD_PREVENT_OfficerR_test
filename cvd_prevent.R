@@ -30,14 +30,14 @@ dt_ICB <- dbGetQuery(con,
 library(tidyverse)
 
 # 26 indicators, all, male and female
-ind_full <- dt %>%
+ind_full <- dt_PCN %>%
             group_by(IndicatorName, TimePeriodName) %>%
             summarise(ct = n()) %>%
             pivot_wider(names_from = TimePeriodName , values_from = ct)
 
 write_csv(ind_full, "ind_full.csv")
 
-inds <- ind_fulll %>%
+inds <- ind_full %>%
     left_join(ind_sept23, keep = TRUE)
 
 write_tsv(ind_full, file = "inds_check.tsv")
@@ -102,7 +102,7 @@ a<-
         #, plot.subtitle = element_text(face = "italic", size = 12)
         )
 
-a <- rvg::dml(ggobj=a, fonts = )
+a <- rvg::dml(ggobj=a)
 
 # Powerpoint import
 library(officer)
@@ -143,4 +143,23 @@ slide_summary(ppt_tmp,2)
 
 ph_location_label(title)
 # export and try
-print(my_pres, target = "output/first_example.pptx")
+print(my_pres, target = "test.pptx")
+
+
+plot2 <-
+  iris %>%
+  ggplot(aes(x=Petal.Length,y=Petal.Width, col=Species))+
+  geom_point(size=2)+
+  scale_colour_viridis_d()
+
+plot2 <- rvg::dml(ggobj = plot2)
+
+
+my_pres <-add_slide(my_pres, layout = "1_Normal Slide Picture", master="21_BasicWhite")
+
+my_pres <- ph_with(my_pres, value = "Iris Data", location =  ph_location_label("Slide Title"))
+
+my_pres <- ph_with(my_pres, value = plot2, location = ph_location_type("pic"))
+
+# export and try
+print(my_pres, target = "test2.pptx")
